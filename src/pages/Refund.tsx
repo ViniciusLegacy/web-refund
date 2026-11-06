@@ -1,13 +1,24 @@
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router"
+import { z, ZodError } from "zod"
+import { AxiosError } from "axios"
 
 import fileSvg from "../assets/file.svg"
 import { CATEGORIES, CATEGORIES_KEYS } from "../utils/categories"
+
+import { api } from "../services/api"
 
 import { Input } from "../components/Input"
 import { Button } from "../components/Button"
 import { Select } from "../components/Select"
 import { Upload } from "../components/Upload"
+import { Header } from "../components/Header"
+
+const refundSchema = z.object({
+    name: z.string().min(3, { message: "Informe um nome claro para sua solicitação" }),
+    category: z.string().min(1, { message: "Informe a categoria" }),
+    amount: z.coerce.number({ message: "Informe um valor válido" }).positive({ message: "Informe um valor superior a zero" }),
+})
 
 export function Refund() {
     const [name, setName] = useState("")
@@ -19,14 +30,40 @@ export function Refund() {
     const navigate = useNavigate()
     const params = useParams<{ id: string }>()
 
-    function onSubmit(e: React.FormEvent) {
+    async function onSubmit(e: React.SubmitEvent) {
         e.preventDefault()
 
         if(params.id) {
             return navigate(-1)
         }
 
-        navigate("/confirm", { state: { fromSubmit: true } })
+        try {
+            setIsLoading(true)
+
+            const data = refundSchema.parse({
+                name,
+                category,
+                amount: amount.replace(",", ".")
+            })
+
+            await api.post("/refunds", { ...data, filename: "1234567891029348298392849242.png" })
+
+            navigate("/confirm", { state: { fromSubmit: true } })
+        } catch (error) {
+            console.log(error)
+
+            if(error instanceof ZodError) {
+                return { message: error.issues[0].message }
+            }
+
+            if(error instanceof AxiosError) {
+                return { message: error.response?.data.message }
+            }
+
+            alert("Não foi possível realizar a solicitação")
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
