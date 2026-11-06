@@ -1,9 +1,10 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router"
 import { z, ZodError } from "zod"
 import { AxiosError } from "axios"
 
 import fileSvg from "../assets/file.svg"
+import { formatCurrency } from "../utils/formatCurrency"
 import { CATEGORIES, CATEGORIES_KEYS } from "../utils/categories"
 
 import { api } from "../services/api"
@@ -12,7 +13,6 @@ import { Input } from "../components/Input"
 import { Button } from "../components/Button"
 import { Select } from "../components/Select"
 import { Upload } from "../components/Upload"
-import { Header } from "../components/Header"
 
 const refundSchema = z.object({
     name: z.string().min(3, { message: "Informe um nome claro para sua solicitação" }),
@@ -26,6 +26,7 @@ export function Refund() {
     const [category, setCategory] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const [file, setFile] = useState<File | null>(null)
+    const [fileURL, setFileURL] = useState<string | null>(null)
 
     const navigate = useNavigate()
     const params = useParams<{ id: string }>()
@@ -75,6 +76,31 @@ export function Refund() {
         }
     }
 
+    async function fetchRefund(id: string) {
+        try {
+            const { data } = await api.get<RefundAPIResponse>(`/refunds/${id}`)
+            
+            setName(data.name)
+            setCategory(data.category)
+            setAmount(formatCurrency(data.amount))
+            setFileURL(data.filename)
+        } catch (error) {
+            console.log(error)
+
+            if(error instanceof AxiosError) {
+                return alert(error.response?.data.message)
+            }
+
+            alert("Não foi possível carregar")
+        }
+    }
+
+    useEffect(() => {
+        if(params.id) {
+            fetchRefund(params.id)
+        }
+    }, [params.id])
+
     return (
         <form onSubmit={onSubmit} className="bg-gray-500 w-full rounded-xl flex flex-col p-10 gap-6 lg:min-w-[512px]">
             <header>
@@ -97,8 +123,8 @@ export function Refund() {
             </div>
 
             {
-                params.id ? (
-                <a href="/" target="_blank" 
+                params.id && fileURL ? (
+                <a href={`http://localhost:3333/uploads/${fileURL}`} target="_blank" 
                 className="text-sm text-green-100 font-semibold flex items-center justify-center gap-2 my-6 hover:opacity-70 transition ease-linear">
                     <img src={fileSvg} alt="ícone de arquivo" />
                     Abrir Comprovante
