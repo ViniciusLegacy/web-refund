@@ -8,10 +8,8 @@ import { AuthRoutes } from "./auth-routes";
 import { ManagerRoutes } from "./manager-routes";
 import { EmployeeRoutes } from "./employee-routes";
 
-const isLoading = false
-
 export function Routes() {
-    const { session } = useAuth()
+    const { session, isLoading } = useAuth()
 
     function Route() {
         switch (session?.user.role) {
